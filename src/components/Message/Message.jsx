@@ -1,20 +1,12 @@
-import React, { Component } from 'react';
+import React from 'react';
 
 import PropTypes from 'prop-types';
 
 // Styled components
 import { Title } from './Message.styled';
 
-class ErrorMessage extends Component {
-  static defaultProps = {
-    title: 'Something went wrong...',
-  };
-
-  render() {
-    const { title } = this.props;
-
-    return <Title>{title}</Title>;
-  }
+function ErrorMessage({ title = 'Something went wrong...' }) {
+  return <Title>{title}</Title>;
 }
 
 ErrorMessage.propTypes = {

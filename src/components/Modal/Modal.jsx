@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 
 import { createPortal } from 'react-dom';
@@ -6,55 +6,48 @@ import { createPortal } from 'react-dom';
 // Styled components
 import { Overlay, ModalWrapper } from './Modal.styled';
 
-class Modal extends Component {
-  static defaultProps = {
-    img: '',
-    alt: '',
-  };
+function Modal({ modalImg, onModalClose }) {
+  useEffect(() => {
+    function onWindowKeypress(e) {
+      const pressedKey = e.code;
+      if (pressedKey === `Escape`) {
+        onModalClose();
+      }
+    }
 
-  componentDidMount() {
     document.body.style.overflowY = 'hidden';
-    window.addEventListener('keydown', this.onWindowKeypress);
-  }
+    window.addEventListener('keydown', onWindowKeypress);
 
-  componentWillUnmount() {
-    document.body.style.overflowY = 'unset';
-    window.removeEventListener('keydown', this.onWindowKeypress);
-  }
+    return () => {
+      document.body.style.overflowY = 'unset';
+      window.removeEventListener('keydown', onWindowKeypress);
+    };
+  }, [onModalClose]);
 
-  handleClick = e => {
+  const handleClick = e => {
     if (e.currentTarget === e.target) {
-      this.props.onModalClose();
+      onModalClose();
     }
   };
 
-  onWindowKeypress = e => {
-    const pressedKey = e.code;
-    if (pressedKey === `Escape`) {
-      this.props.onModalClose();
-    }
-  };
+  const modalLayout = (
+    <Overlay onClick={handleClick}>
+      <ModalWrapper>
+        <img src={modalImg.img} alt={modalImg.alt} />
+      </ModalWrapper>
+    </Overlay>
+  );
 
-  render() {
-    const { img, alt } = this.props;
+  const modalRoot = document.getElementById('modal-root');
 
-    const modalLayout = (
-      <Overlay onClick={this.handleClick}>
-        <ModalWrapper>
-          <img src={img} alt={alt} />
-        </ModalWrapper>
-      </Overlay>
-    );
-
-    const modalRoot = document.getElementById('modal-root');
-
-    return createPortal(modalLayout, modalRoot);
-  }
+  return createPortal(modalLayout, modalRoot);
 }
 
 Modal.propTypes = {
-  img: PropTypes.string.isRequired,
-  alt: PropTypes.string.isRequired,
+  modalImg: PropTypes.shape({
+    img: PropTypes.string.isRequired,
+    alt: PropTypes.string.isRequired,
+  }),
   onModalClose: PropTypes.func.isRequired,
 };
 

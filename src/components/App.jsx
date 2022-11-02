@@ -1,5 +1,4 @@
-import React, { Component } from 'react';
-import PropTypes from 'prop-types';
+import React, { useState, useEffect } from 'react';
 
 import PixabayAPI from 'js/Components/PixabayAPI';
 
@@ -15,176 +14,166 @@ import Modal from 'components/Modal';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 
-class App extends Component {
-  static defaultProps = {
-    searchQuery: '',
-  };
+const STATUS_TYPE = {
+  idle: 'idle',
+  rejected: 'rejected',
+  pending: 'pending',
+  resolved: 'resolved',
+};
 
-  state = {
-    status: 'idle',
-    loadMoreStatus: 'hidden',
-    searchQuery: '',
-    data: [],
-    rejectMessage: '',
-    modalAlt: false,
-    modalImg: false,
-  };
+const LOAD_MORE_STATUS_TYPE = {
+  hidden: 'hidden',
+  shown: 'shown',
+  pending: 'pending',
+};
 
-  async componentDidUpdate(prevProps, prevState) {
-    if (this.state.loadMoreStatus !== prevState.loadMoreStatus) {
-      window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: 'smooth',
-      });
-    }
+const INITIAL_STATE = {
+  status: STATUS_TYPE.idle,
+  loadMoreStatus: LOAD_MORE_STATUS_TYPE.hidden,
+  searchQuery: null,
+  data: null,
+  rejectMessage: '',
+  modalImg: false,
+  didMount: false,
+};
 
-    if (prevState.searchQuery !== this.state.searchQuery) {
-      this.setState({
-        status: 'pending',
-        modalAlt: false,
-        modalImg: false,
-      });
+const App = () => {
+  const [status, setStatus] = useState(INITIAL_STATE.status);
+  const [loadMoreStatus, setLoadMoreStatus] = useState(
+    INITIAL_STATE.loadMoreStatus
+  );
+  const [searchQuery, setSearchQuery] = useState(INITIAL_STATE.searchQuery);
+  const [data, setData] = useState(INITIAL_STATE.data);
+  const [rejectMessage, setRejectMessage] = useState(
+    INITIAL_STATE.rejectMessage
+  );
+  const [modalImg, setModalImg] = useState(INITIAL_STATE.modalImg);
 
-      try {
-        const data = await PixabayAPI.getImages(this.state.searchQuery);
-
-        const loadMoreStatus = this.createLoadMoreStatus();
-
-        this.setState(
-          {
-            data,
-            loadMoreStatus,
-            status: 'resolved',
-          },
-          this.showMessageDependingOnDataLength
-        );
-      } catch (e) {
-        this.setState({
-          rejectMessage: e.message,
-          status: 'rejected',
-        });
-      }
-    }
-  }
-
-  onLoadMoreClick = async () => {
-    this.setState({
-      loadMoreStatus: 'pending',
+  useEffect(() => {
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: 'smooth',
     });
+  }, [loadMoreStatus]);
+
+  useEffect(() => {
+    if (searchQuery === null) return;
+
+    setStatus(STATUS_TYPE.pending);
+    setModalImg(INITIAL_STATE.modalImg);
+
     try {
-      const incomingData = await PixabayAPI.getImages();
-      const loadMoreStatus = this.createLoadMoreStatus();
-
-      this.setState(prevState => ({
-        data: [...prevState.data, ...incomingData],
-        loadMoreStatus,
-      }));
+      (async () => {
+        const fetchedData = await PixabayAPI.getImages(searchQuery);
+        setData([...fetchedData]);
+      })();
     } catch (e) {
-      this.setState({
-        rejectMessage: e.message,
-        status: 'rejected',
-      });
+      setRejectMessage(e.message);
+      setStatus(STATUS_TYPE.rejected);
     }
-  };
+  }, [searchQuery]);
 
-  showMessageDependingOnDataLength = () => {
-    if (this.state.data.length <= 0) {
+  useEffect(() => {
+    if (data === null) return;
+
+    setStatus(STATUS_TYPE.resolved);
+    setLoadMoreStatus(
+      PixabayAPI.ifMoreImagesPossible
+        ? LOAD_MORE_STATUS_TYPE.shown
+        : LOAD_MORE_STATUS_TYPE.hidden
+    );
+
+    if (data.length <= 0) {
       toast.warning('Woops, nothing was found.');
     } else {
       toast('Here are your results');
     }
-  };
+  }, [data]);
 
-  createLoadMoreStatus = () =>
-    PixabayAPI.ifMoreImagesPossible ? 'shown' : 'hidden';
-
-  onFormSubmit = searchQuery => {
-    this.setState({
-      searchQuery,
-    });
-  };
-
-  onImgCardClick = ({ img: modalImg, alt: modalAlt }) => {
-    this.setState(() => ({
-      modalImg,
-      modalAlt,
-    }));
-  };
-
-  onModalClose = () => {
-    this.setState(() => ({
-      modalImg: false,
-      modalAlt: false,
-    }));
-  };
-
-  render() {
-    const { status, loadMoreStatus, rejectMessage, data, modalImg, modalAlt } =
-      this.state;
-
-    const renderIfStatusIdle = () =>
-      status === 'idle' && <Message title="Start looking for images 🔎" />;
-
-    const renderIfStatusPending = () =>
-      status === 'pending' && (
-        <Loader positionType={'absolute'} ifLargeSize={true} />
-      );
-
-    const renderIfStatusResolved = () =>
-      status === 'resolved' && (
-        <ImageGallery data={data} onImgCardClick={this.onImgCardClick} />
-      );
-
-    const renderIfStatusRejected = () =>
-      status === 'rejected' && <Message title={rejectMessage} />;
-
-    const renderLoadMore = () => {
-      if (loadMoreStatus === 'hidden') return;
-
-      if (loadMoreStatus === 'pending')
-        return <Loader positionType="centered" ifLargeSize={false} />;
-
-      if (loadMoreStatus === 'shown')
-        return <Button onClick={this.onLoadMoreClick} title="Load More" />;
-    };
-
-    return (
-      <AppWrapper>
-        <SearchBar onFormSubmit={this.onFormSubmit} />
-
-        {renderIfStatusIdle()}
-        {renderIfStatusPending()}
-        {renderIfStatusResolved()}
-        {renderIfStatusRejected()}
-        {renderLoadMore()}
-
-        {modalImg && (
-          <Modal
-            onModalClose={this.onModalClose}
-            alt={modalAlt}
-            img={modalImg}
-          />
-        )}
-
-        <ToastContainer
-          position="top-right"
-          autoClose={2000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="light"
-        />
-      </AppWrapper>
-    );
+  function onFormSubmit(newSearchQuery) {
+    setSearchQuery(newSearchQuery);
   }
-}
 
-App.propTypes = {
-  searchQuery: PropTypes.string,
+  function onImgCardClick(modalImg) {
+    setModalImg(modalImg);
+  }
+
+  async function onLoadMoreClick() {
+    setLoadMoreStatus(STATUS_TYPE.pending);
+
+    try {
+      const incomingData = await PixabayAPI.getImages();
+
+      setData([...data, ...incomingData]);
+      setLoadMoreStatus(
+        PixabayAPI.ifMoreImagesPossible
+          ? LOAD_MORE_STATUS_TYPE.shown
+          : LOAD_MORE_STATUS_TYPE.hidden
+      );
+    } catch (e) {
+      setRejectMessage(e.message);
+      setStatus(STATUS_TYPE.rejected);
+    }
+  }
+
+  function onModalClose() {
+    setModalImg(INITIAL_STATE.modalImg);
+  }
+
+  const renderIfStatusIdle = () =>
+    status === STATUS_TYPE.idle && (
+      <Message title="Start looking for images 🔎" />
+    );
+
+  const renderIfStatusPending = () =>
+    status === STATUS_TYPE.pending && (
+      <Loader positionType={'absolute'} ifLargeSize={true} />
+    );
+
+  const renderIfStatusResolved = () =>
+    status === STATUS_TYPE.resolved && (
+      <ImageGallery data={data ? data : []} onImgCardClick={onImgCardClick} />
+    );
+
+  const renderIfStatusRejected = () =>
+    status === STATUS_TYPE.rejected && <Message title={rejectMessage} />;
+
+  const renderLoadMore = () => {
+    if (loadMoreStatus === LOAD_MORE_STATUS_TYPE.hidden) return;
+
+    if (loadMoreStatus === LOAD_MORE_STATUS_TYPE.pending)
+      return <Loader positionType="centered" ifLargeSize={false} />;
+
+    if (loadMoreStatus === LOAD_MORE_STATUS_TYPE.shown)
+      return <Button onClick={onLoadMoreClick} title="Load More" />;
+  };
+
+  return (
+    <AppWrapper>
+      <SearchBar onFormSubmit={onFormSubmit} />
+
+      {renderIfStatusIdle()}
+      {renderIfStatusPending()}
+      {renderIfStatusResolved()}
+      {renderIfStatusRejected()}
+      {renderLoadMore()}
+
+      {modalImg && <Modal onModalClose={onModalClose} modalImg={modalImg} />}
+
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+    </AppWrapper>
+  );
 };
 
 export default App;

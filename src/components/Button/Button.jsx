@@ -1,18 +1,15 @@
-import React, { Component } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 
 // Styled components
 import { StyledBtn } from './Button.styled';
 
-class Button extends Component {
-  render() {
-    const { onClick, title } = this.props;
-    return (
-      <StyledBtn type="button" onClick={onClick}>
-        {title}
-      </StyledBtn>
-    );
-  }
+function Button({ onClick, title }) {
+  return (
+    <StyledBtn type="button" onClick={onClick}>
+      {title}
+    </StyledBtn>
+  );
 }
 
 Button.propTypes = {
