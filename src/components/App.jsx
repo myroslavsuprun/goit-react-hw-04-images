@@ -77,11 +77,7 @@ const App = () => {
     if (data === null) return;
 
     setStatus(STATUS_TYPE.resolved);
-    setLoadMoreStatus(
-      PixabayAPI.ifMoreImagesPossible
-        ? LOAD_MORE_STATUS_TYPE.shown
-        : LOAD_MORE_STATUS_TYPE.hidden
-    );
+    setLoadMoreStatus(ifMoreImagesPossible());
 
     if (data.length <= 0) {
       toast.warning('Woops, nothing was found.');
@@ -105,11 +101,7 @@ const App = () => {
       const incomingData = await PixabayAPI.getImages();
 
       setData([...data, ...incomingData]);
-      setLoadMoreStatus(
-        PixabayAPI.ifMoreImagesPossible
-          ? LOAD_MORE_STATUS_TYPE.shown
-          : LOAD_MORE_STATUS_TYPE.hidden
-      );
+      setLoadMoreStatus(ifMoreImagesPossible());
     } catch (e) {
       setRejectMessage(e.message);
       setStatus(STATUS_TYPE.rejected);
@@ -118,6 +110,12 @@ const App = () => {
 
   function onModalClose() {
     setModalImg(INITIAL_STATE.modalImg);
+  }
+
+  function ifMoreImagesPossible() {
+    return PixabayAPI.ifMoreImagesPossible
+      ? LOAD_MORE_STATUS_TYPE.shown
+      : LOAD_MORE_STATUS_TYPE.hidden;
   }
 
   const renderIfStatusIdle = () =>
